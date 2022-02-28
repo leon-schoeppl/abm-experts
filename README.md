@@ -1,2 +1,3 @@
 # abm-experts
-Agent based model using a non-Bayesian model of deferral to expert testimony to test a Bayesian model thereof.
+
+I'm planning on employing the model from Hein Duijf's 2021 *Should one trust experts?* to objectively evaluate deferral choices made by agents deliberting subjectively using a Bayesian model introduced in Stephan Hartmann's and Luc Bovens' 2004 *Bayesian Epistemology*.
