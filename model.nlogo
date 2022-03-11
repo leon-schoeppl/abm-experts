@@ -4,72 +4,129 @@ breed[laypeople layperson]
 ;------------------------------------------------------------------------------------------------------
 ;The properties of the expert are objective values used in Duijf's model.
 experts-own[
-  competency ;how likely is the expert to be correct about phi?
-  interestAlignment ;to what degree does the experts interest align with that of the layperson?
+  competency ;(e) how likely is the expert to be correct about phi?
+  interestAlignment ;(alpha) to what degree does the experts interest align with that of the layperson?
   testimony ;What does the expert suggest the layperson do?
+  myLaypersonNumber
 
 ]
 
 ;------------------------------------------------------------------------------------------------------
 ;While the layperson's competency is an objective value, some of the other ones are used in Hartmann's (subjective) Bayesian model.
 laypeople-own[
-  competency ;how likely is the expert to be correct about phi?
+  competency ;(l) how likely is the expert to be correct about phi?
+  psiGivenPhi
+  psiGivenNotPhi
+  psi ;Boolean normative question that the layperson has an interest in
+  myExpertNumber
 ]
 
 globals[
-;numberOfPairs ;How many experts and laypeople are there?
+  ;numberOfPairs ;How many experts and laypeople are there?
   phi ;Boolean factual proposition
-  ;psi ;Boolean normative question
 ]
 
 to setup ;called at the start of each simulation
   clear-all
   reset-ticks
 
+
+  setupWorld
   setupLaypeople
   setupExperts
+  printSetup
  end
 
+to setupWorld
+  set phi random 2
+   resize-world (0 -(numberOfPairs / 2)) (numberOfPairs / 2) (0 -(numberOfPairs / 2)) (numberOfPairs / 2)
+end
 
 to setupLaypeople
   create-Laypeople numberOfPairs[
+    ;Each layperson should stand opposite their respective expert.
+    set xcor 0 - numberOfPairs / 4
+    set ycor who
+
+    set myExpertNumber who + numberOfPairs
+
+
 
     ;L competency is a random float within the specified interval.
     set competency ((random-float (maxLaypersonCompetency - minLaypersonCompetency)) + minLaypersonCompetency)
+
+    ;L's actual interest on the question psi is determined based on the actual truth about phi.
+    ifelse phi = 1 [set psi psiGivenPhi]
+    [set psi psiGivenNotPhi]
   ]
 
 end
 
 to setupExperts
   create-experts numberOfPairs[
+    ;Each expert should stand opposite their respective layperson.
+    set xcor numberOfPairs / 4
+    set ycor who - numberOfPairs
+
+    ;1:1 linking of exerts and laypeople
+    set myLaypersonNumber who - numberOfPairs
+    create-link-with turtle myLaypersonNumber
+
+
     ;E competency is a random float within the specified interval.
-    set competency ((random-float (maxExpertCompetency - minExpertCompetency)) + minExpertCompetency)
+    let myMinCompetency minExpertCompetency
+    if e>l [set myMinCompetency max (list minExpertCompetency [competency] of turtle myLaypersonNumber)]
+
+    set competency ((random-float (maxExpertCompetency - myMinCompetency)) + myMinCompetency)
+
+
 
     ;alpha is a random float in the unit interval.
     set interestAlignment random-float 1
 
-    ;The testimony (on whether psi) given by the expert is determined by the truth value of phi, the experts competency and degree of interest alignment.
-    let correct? random-float 1
+
   ]
 
 end
 
+to printSetup
+  print "---------------------------------------------------------------------------------------------------------"
+   print "---------------------------------------------------------------------------------------------------------"
+  print (word "The value of phi in this run is " phi ".")
+  print "---------------------------------------------------------------------------------------------------------"
+  let i 0
+  loop [
+    if i = numberOfPairs [
+      print "---------------------------------------------------------------------------------------------------------"
+
+      stop]
+    print (word "In pair #" (i + 1) " the expert has a competency of " precision [competency] of turtle (i + numberOfPairs) 2 " and the layperson has a competency of " precision [competency] of turtle i 2 ". Their interests align to " precision [interestAlignment] of turtle (i + numberOfPairs) 2 "%.")
+    set i i + 1
+  ]
+
+
+end
 
 to go ;called once per tick
   tick
 
-
-
+  ;determine laypeople and expert correctness on phi
+  ;determine expert advice
+  ;determine whether deferall is optimal
+  ;determine
+  ;ask-laypeople []
+  ;The testimony (on whether psi) given by the expert is determined by the truth value of phi, the experts competency and degree of interest alignment.
+    ;let correct? random-float 1
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-1523
-1324
+296
+14
+386
+105
 -1
 -1
-39.55
+11.85
 1
 10
 1
@@ -79,10 +136,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+-3
+3
+-3
+3
 0
 0
 1
@@ -90,10 +147,10 @@ ticks
 30.0
 
 BUTTON
-39
-576
-102
-609
+22
+91
+85
+124
 NIL
 go
 T
@@ -107,10 +164,10 @@ NIL
 1
 
 BUTTON
-40
-537
-103
-570
+23
+52
+86
+85
 NIL
 go\n
 NIL
@@ -124,10 +181,10 @@ NIL
 1
 
 BUTTON
-38
-497
-111
-530
+21
+12
+94
+45
 NIL
 setup
 NIL
@@ -141,25 +198,25 @@ NIL
 1
 
 SLIDER
-156
-499
-328
-532
+20
+135
+192
+168
 numberOfPairs
 numberOfPairs
 1
 100
-17.0
+7.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-302
-621
-554
-654
+7
+195
+259
+228
 minLaypersonCompetency
 minLaypersonCompetency
 0
@@ -171,10 +228,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-303
-657
-555
-690
+8
+231
+260
+264
 maxLaypersonCompetency
 maxLaypersonCompetency
 0
@@ -186,10 +243,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-558
-619
-779
-652
+7
+270
+228
+303
 minExpertCompetency
 minExpertCompetency
 0
@@ -201,10 +258,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-558
-656
-783
-689
+7
+307
+232
+340
 maxExpertCompetency
 maxExpertCompetency
 0
@@ -214,6 +271,17 @@ maxExpertCompetency
 1
 NIL
 HORIZONTAL
+
+SWITCH
+9
+346
+112
+379
+e>l
+e>l
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
