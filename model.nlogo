@@ -6,6 +6,7 @@ breed[laypeople layperson]
 experts-own[
   competency ;(e) how likely is the expert to be correct about phi?
   interestAlignment ;(alpha) to what degree does the experts interest align with that of the layperson?
+  assesment ;what does the expert think about phi
   testimony ;What does the expert suggest the layperson do?
   myLaypersonNumber
 
@@ -16,9 +17,16 @@ experts-own[
 laypeople-own[
   competency ;(l) how likely is the expert to be correct about phi?
   psiGivenPhi
-  psiGivenNotPhi
   psi ;Boolean normative question that the layperson has an interest in
   myExpertNumber
+  assesment
+  didDefer?
+
+  ;********************************
+  ;Subjective values
+  hyp
+  rel
+  rep
 ]
 
 globals[
@@ -44,6 +52,7 @@ end
 
 to setupLaypeople
   create-Laypeople numberOfPairs[
+    set color white
     ;Each layperson should stand opposite their respective expert.
     set xcor 0 - numberOfPairs / 4
     set ycor who
@@ -55,15 +64,23 @@ to setupLaypeople
     ;L competency is a random float within the specified interval.
     set competency ((random-float (maxLaypersonCompetency - minLaypersonCompetency)) + minLaypersonCompetency)
 
+
     ;L's actual interest on the question psi is determined based on the actual truth about phi.
     ifelse phi = 1 [set psi psiGivenPhi]
-    [set psi psiGivenNotPhi]
+    [set psi (1 - psiGivenPhi)]
+
+    ;L's subjective prior for the hypothesis that |psi|=true is given by their competency
+    ifelse psi = 1 [set hyp competency]
+    [set hyp 1 - competency]
+
+
   ]
 
 end
 
 to setupExperts
   create-experts numberOfPairs[
+    set color white
     ;Each expert should stand opposite their respective layperson.
     set xcor numberOfPairs / 4
     set ycor who - numberOfPairs
@@ -110,14 +127,110 @@ end
 to go ;called once per tick
   tick
 
-  ;determine laypeople and expert correctness on phi
-  ;determine expert advice
-  ;determine whether deferall is optimal
-  ;determine
-  ;ask-laypeople []
-  ;The testimony (on whether psi) given by the expert is determined by the truth value of phi, the experts competency and degree of interest alignment.
-    ;let correct? random-float 1
+  ask experts[
+
+    ;determine phi assesment of phi
+    let i random-float 1
+    ifelse i < competency [set assesment phi][set assesment 1 - phi]
+
+    print (word "Expert " (who - numberOfPairs) " assessed the value of phi to be " assesment ".")
+
+
+    ;determine psi
+
+    ifelse assesment = phi [
+      let j random-float 1
+      ifelse j < interestalignment [
+        set testimony [psi] of turtle mylaypersonnumber
+
+
+      ][set testimony 1 - [psi] of turtle mylaypersonnumber]
+
+
+
+
+
+    ][
+      let j random-float 1
+      ifelse j > interestalignment [
+        set testimony [psi] of turtle mylaypersonnumber
+
+
+      ][set testimony 1 - [psi] of turtle mylaypersonnumber]
+
+    ]
+
+
+    print (word "Their testimony is " testimony ", while it would lay in their layperson's interest to " [psi] of turtle mylaypersonnumber ".")
+
+
+    ifelse assesment = phi [set shape "face happy"][set shape "x"] ;experts that figured out phi get a smiley, others a X
+    ifelse testimony = [psi] of turtle mylaypersonnumber [set color green][ set color red] ;experts that gave correct testimony are green, others red
+
+    ;**************************************************************************************************
+    ;determine whether deferall is optimal according to Duijf's model and color the links accordingly!
+    let chanceOfCorrectTestimony interestAlignment * competency + (1 - interestAlignment) * (1 - competency)
+
+    ifelse  [competency] of turtle mylaypersonnumber < chanceOfCorrectTestimony [
+      print (word "According to Duijf's model, the layperson " (who - numberofpairs) " should trust this expert.")
+      ask links [set color green]
+    ][
+      print (word "According to Duijf's model, the layperson " (who - numberofpairs) " should NOT trust this expert.")
+      ask links [set color red]
+    ]
+
+
+  ]
+
+
+  ask laypeople [
+
+    let i random-float 1
+    ifelse i < competency [set assesment phi][set assesment 1 - phi]
+     ifelse assesment = phi [set shape "face happy"][set shape "x"] ;laypeople that figured out phi get a smiley, others a X
+
+    ;Determine whether the layperson does defer using Hartmann's & Boven's model
+
+    ; ifelse didDefer = [psi] of turtle mylaypersonnumber [set color green][ set color red]
+
+  ]
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 296
