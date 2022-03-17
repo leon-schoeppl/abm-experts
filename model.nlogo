@@ -24,9 +24,13 @@ laypeople-own[
 
   ;********************************
   ;Subjective values
-  hyp
-  rel
-  rep
+  priorE ;used to initialize rel
+  priorAlpha ;used to initialize rel
+  hyp ;node in the Bayes-Net
+  rel ;node in the Bayes-Net
+  rep ;node in the Bayes-Net
+  beta ;used to define the rep node
+  charlatan? ;is E worse than chance?
 ]
 
 globals[
@@ -40,8 +44,10 @@ to setup ;called at the start of each simulation
 
 
   setupWorld
-  setupLaypeople
+  beginSetupLaypeople
   setupExperts
+  finishSetupLaypeople
+
   printSetup
  end
 
@@ -50,7 +56,7 @@ to setupWorld
    resize-world (0 -(numberOfPairs / 2)) (numberOfPairs / 2) (0 -(numberOfPairs / 2)) (numberOfPairs / 2)
 end
 
-to setupLaypeople
+to beginSetupLaypeople
   create-Laypeople numberOfPairs[
     set color white
     ;Each layperson should stand opposite their respective expert.
@@ -72,6 +78,66 @@ to setupLaypeople
     ;L's subjective prior for the hypothesis that |psi|=true is given by their competency
     ifelse psi = 1 [set hyp competency]
     [set hyp 1 - competency]
+
+
+
+
+  ]
+
+end
+
+to finishSetupLaypeople
+
+  ask laypeople[
+    ;------------------------------------------------------------------------------------------------------
+    ;L takes an educated guess at e and alpha of their expert, based on the laypersonAstutness
+
+    let i (random-float (1 - laypersonAstuteness) * 2) - (1 - laypersonAstuteness)
+    let j (random-float (1 - laypersonAstuteness) * 2) - (1 - laypersonAstuteness)
+
+    set priorE [competency] of turtle myExpertNumber + i
+    set priorAlpha [interestAlignment] of turtle myExpertNumber + j
+
+    if priorE < 0 [set priorE 0]
+    if priorE > 1 [set priorE 1]
+    if priorAlpha < 0 [set priorAlpha 0]
+    if priorAlpha > 1 [set priorAlpha 1]
+
+    ;------------------------------------------------------------------------------------------------------
+    ;L's subjective prior's in the experts reliability arise from their priors in e and alpha
+    let priorCorrectExpertAdvice priorE * priorAlpha ;use correct formula
+
+    ifelse updateOnReliablyBadExperts [
+
+      ;An expert with a 50 % chance of giving correct advice is reliable with probability 0
+      ;An expert with a 0 or 100 % chance of giving correct advice is reliable with a probability 1
+      ;An expert with a 25 or 75 % chance of giving correct advice is reliable with a probability 0.5
+      ;And so on...
+      ;Here, beta is just 0.5
+
+      if priorCorrectExpertAdvice < 0.5 [
+        set charlatan? true
+        set priorCorrectExpertAdvice 0.5 + (0.5 - priorCorrectExpertAdvice)
+      ]
+
+      set rel (priorCorrectExpertAdvice - 0.5) * 2
+      set beta 0.5
+
+
+    ][
+      ;An expert with a 50 % chance of giving correct advice is reliable with probability 0
+      ;An expert with a 100 % chance of giving correct advice is reliable with a probability 1
+      ;An expert with a 75 % chance of giving correct advice is reliable with a probability 0.5
+      ;An expert with a sub 50 % chance of giving correct advice is unreliable
+      ;Here, beta is calculated by [...]
+
+
+
+      if priorCorrectExpertAdvice < 0.5 [set priorCorrectExpertAdvice 0.5]
+      set rel (priorCorrectExpertAdvice - 0.5) * 2
+
+      set beta 0.5
+    ]
 
 
   ]
@@ -195,8 +261,6 @@ to go ;called once per tick
 
   ]
 end
-
-
 
 
 
@@ -393,6 +457,32 @@ SWITCH
 e>l
 e>l
 0
+1
+-1000
+
+SLIDER
+12
+387
+221
+420
+laypersonAstuteness
+laypersonAstuteness
+0
+1
+0.8
+0.01
+1
+NIL
+HORIZONTAL
+
+SWITCH
+425
+572
+689
+605
+updateOnReliablyBadExperts
+updateOnReliablyBadExperts
+1
 1
 -1000
 
