@@ -22,7 +22,7 @@ laypeople-own[
   assesment
   didDefer?
 
-  ;********************************
+  ;************************************************************************************************************************************************
   ;Subjective values
   priorE ;used to initialize rel
   priorAlpha ;used to initialize rel
@@ -146,7 +146,9 @@ end
 
 to setupExperts
   create-experts numberOfPairs[
+    ;color is initially neutral
     set color white
+
     ;Each expert should stand opposite their respective layperson.
     set xcor numberOfPairs / 4
     set ycor who - numberOfPairs
@@ -159,13 +161,17 @@ to setupExperts
     ;E competency is a random float within the specified interval.
     let myMinCompetency minExpertCompetency
     if e>l [set myMinCompetency max (list minExpertCompetency [competency] of turtle myLaypersonNumber)]
-
     set competency ((random-float (maxExpertCompetency - myMinCompetency)) + myMinCompetency)
 
 
 
-    ;alpha is a random float in the unit interval.
-    set interestAlignment random-float 1
+    ;alpha is a random float within the specified interval
+
+
+    set interestAlignment ((random-float (maxInterestAlignment - minInterestAlignment)) + minInterestAlignment)
+
+
+
 
 
   ]
@@ -183,7 +189,9 @@ to printSetup
       print "---------------------------------------------------------------------------------------------------------"
 
       stop]
-    print (word "In pair #" (i + 1) " the expert has a competency of " precision [competency] of turtle (i + numberOfPairs) 2 " and the layperson has a competency of " precision [competency] of turtle i 2 ". Their interests align to " precision [interestAlignment] of turtle (i + numberOfPairs) 2 "%.")
+    print (word "In pair #" (i + 1) " the expert has a competency of "
+      precision [competency] of turtle (i + numberOfPairs) 2 " and the layperson has a competency of " precision [competency] of turtle i 2
+      ". Their interests align to a degree of " precision [interestAlignment] of turtle (i + numberOfPairs) 2 ".")
     set i i + 1
   ]
 
@@ -194,70 +202,92 @@ to go ;called once per tick
   tick
 
   ask experts[
-
-    ;determine phi assesment of phi
+    ;************************************************************************************************************************************************
+    ;determine E's assesment of phi
     let i random-float 1
     ifelse i < competency [set assesment phi][set assesment 1 - phi]
-
     print (word "Expert " (who - numberOfPairs) " assessed the value of phi to be " assesment ".")
 
-
-    ;determine psi
-
+    ;************************************************************************************************************************************************
+    ;determine E's assesment of psi
     ifelse assesment = phi [
       let j random-float 1
       ifelse j < interestalignment [
         set testimony [psi] of turtle mylaypersonnumber
 
-
       ][set testimony 1 - [psi] of turtle mylaypersonnumber]
-
-
-
-
 
     ][
       let j random-float 1
       ifelse j > interestalignment [
         set testimony [psi] of turtle mylaypersonnumber
-
-
-      ][set testimony 1 - [psi] of turtle mylaypersonnumber]
-
+      ][
+        set testimony 1 - [psi] of turtle mylaypersonnumber
+      ]
     ]
 
-
     print (word "Their testimony is " testimony ", while it would lay in their layperson's interest to " [psi] of turtle mylaypersonnumber ".")
-
-
     ifelse assesment = phi [set shape "face happy"][set shape "x"] ;experts that figured out phi get a smiley, others a X
     ifelse testimony = [psi] of turtle mylaypersonnumber [set color green][ set color red] ;experts that gave correct testimony are green, others red
 
-    ;**************************************************************************************************
-    ;determine whether deferall is optimal according to Duijf's model and color the links accordingly!
+    ;************************************************************************************************************************************************
+    ;determine whether deferral is optimal according to Duijf's model and color the links accordingly
     let chanceOfCorrectTestimony interestAlignment * competency + (1 - interestAlignment) * (1 - competency)
 
     ifelse  [competency] of turtle mylaypersonnumber < chanceOfCorrectTestimony [
-      print (word "According to Duijf's model, the layperson " (who - numberofpairs) " should trust this expert.")
+      print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should trust this expert.")
       ask links [set color green]
     ][
-      print (word "According to Duijf's model, the layperson " (who - numberofpairs) " should NOT trust this expert.")
+      print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should NOT trust this expert.")
       ask links [set color red]
     ]
-
+    print "--------------------------------------------------------------------------------------------------------------"
 
   ]
 
 
   ask laypeople [
-
+    ;************************************************************************************************************************************************
+    ;determine L's assesment of phi (and thereby of psi)
     let i random-float 1
     ifelse i < competency [set assesment phi][set assesment 1 - phi]
-     ifelse assesment = phi [set shape "face happy"][set shape "x"] ;laypeople that figured out phi get a smiley, others a X
+    ifelse assesment = phi [set shape "face happy"][set shape "x"] ;laypeople that figured out phi get a smiley, others a X
 
+    ;************************************************************************************************************************************************
     ;Determine whether the layperson does defer using Hartmann's & Boven's model
+    let rep? [testimony] of turtle myExpertNumber
 
     ; ifelse didDefer = [psi] of turtle mylaypersonnumber [set color green][ set color red]
+
+    ;************************************************************************************************************************************************
+    ;Update hyp
+    let previousHyp hyp
+    ifelse rep? = 1 [
+      set hyp ((rel + beta - rel * beta) * hyp)/(hyp * rel + beta - rel * beta)
+    ][
+      set hyp ((1 - (rel + beta - rel * beta))* hyp) / (1 - (rel * hyp + beta - rel * beta))
+    ]
+
+    ifelse previousHyp < hyp [
+      print (word "Layperson #" who " increased their estimate of psi.")
+    ][
+      print (word "Layperson #" who " did NOT increase their estimate of psi.")
+    ]
+
+    ;************************************************************************************************************************************************
+    ;Update rel
+    let previousRel rel
+    ifelse rep? = 1[
+      set rel (hyp * rel)/(hyp * rel + beta - rel * beta)
+    ][
+      set rel ((1 - hyp) * rel)/(1 - (hyp * rel + beta - rel * beta))
+    ]
+
+    ifelse previousRel < rel [
+      print (word "Layperson #" who " increased their estimate of their expert's reliability.")
+    ][
+      print (word "Layperson #" who " did NOT increase their estimate of their expert's reliability.")
+    ]
 
   ]
 end
@@ -299,11 +329,11 @@ end
 GRAPHICS-WINDOW
 296
 14
-386
-105
+552
+271
 -1
 -1
-11.85
+49.6
 1
 10
 1
@@ -313,32 +343,15 @@ GRAPHICS-WINDOW
 1
 1
 1
--3
-3
--3
-3
+-2
+2
+-2
+2
 0
 0
 1
 ticks
 30.0
-
-BUTTON
-22
-91
-85
-124
-NIL
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
 
 BUTTON
 23
@@ -382,8 +395,8 @@ SLIDER
 numberOfPairs
 numberOfPairs
 1
-100
-7.0
+10
+5.0
 1
 1
 NIL
@@ -398,7 +411,7 @@ minLaypersonCompetency
 minLaypersonCompetency
 0
 1
-0.01
+0.5
 0.01
 1
 NIL
@@ -413,7 +426,7 @@ maxLaypersonCompetency
 maxLaypersonCompetency
 0
 1
-1.0
+0.6
 0.01
 1
 NIL
@@ -428,7 +441,7 @@ minExpertCompetency
 minExpertCompetency
 0
 1
-0.5
+0.75
 0.01
 1
 NIL
@@ -461,30 +474,60 @@ e>l
 -1000
 
 SLIDER
-12
-387
-221
-420
+8
+383
+217
+416
 laypersonAstuteness
 laypersonAstuteness
 0
 1
-0.8
+0.79
 0.01
 1
 NIL
 HORIZONTAL
 
 SWITCH
-425
-572
-689
-605
+7
+420
+271
+453
 updateOnReliablyBadExperts
 updateOnReliablyBadExperts
-1
+0
 1
 -1000
+
+SLIDER
+463
+375
+678
+408
+minInterestAlignment
+minInterestAlignment
+0
+1
+1.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+463
+413
+681
+446
+maxInterestAlignment
+maxInterestAlignment
+0
+1
+1.0
+0.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
