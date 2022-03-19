@@ -266,9 +266,25 @@ to go ;called once per tick
     ]
 
     ifelse previousHyp < hyp [
+
       print (word "Layperson #" who " increased their estimate of psi.")
+
+      if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
+        ifelse rep? = 1 and hyp > 0.5 [
+        set color green
+        ][
+          set color red
+        ]
+      ]
     ][
       print (word "Layperson #" who " did NOT increase their estimate of psi.")
+      if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
+        ifelse rep? = 0 and hyp < 0.5 [
+        set color green
+        ][
+          set color red
+        ]
+      ]
     ]
 
     ;************************************************************************************************************************************************
@@ -280,12 +296,19 @@ to go ;called once per tick
       set rel ((1 - hyp) * rel)/(1 - (hyp * rel + beta - rel * beta))
     ]
 
+
+
     ifelse previousRel < rel [
       print (word "Layperson #" who " increased their estimate of their expert's reliability.")
-      set color green ;Increasing REL is taken as evidence of trusting E
+
+      if whatDoesTrustMean? = "Increase of REL" [
+        set color green ;Increasing REL is taken as evidence of trusting E
+      ]
     ][
       print (word "Layperson #" who " did NOT increase their estimate of their expert's reliability.")
+      if whatDoesTrustMean? = "Increase of REL" [
       set color red ;Decreasing REL is taken as evidence of distrusting E
+      ]
     ]
 
 
@@ -528,6 +551,16 @@ maxInterestAlignment
 1
 NIL
 HORIZONTAL
+
+CHOOSER
+6
+459
+357
+504
+WhatDoesTrustMean?
+WhatDoesTrustMean?
+"Increase of REL" "Adjustment of HYP according to testimony"
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
