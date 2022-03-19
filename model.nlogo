@@ -8,7 +8,7 @@ experts-own[
   interestAlignment ;(alpha) to what degree does the experts interest align with that of the layperson?
   assesment ;what does the expert think about phi
   testimony ;What does the expert suggest the layperson do?
-  myLaypersonNumber
+  myLaypersonNumber ;used to reference their layperson
 
 ]
 
@@ -16,22 +16,21 @@ experts-own[
 ;While the layperson's competency is an objective value, some of the other ones are used in Hartmann's (subjective) Bayesian model.
 laypeople-own[
   competency ;(l) how likely is the expert to be correct about phi?
-  psiGivenPhi
+  psiGivenPhi ;what's the layperson's interest given phi is the case?
   psi ;Boolean normative question that the layperson has an interest in
-  myExpertNumber
-  assesment
-  didDefer?
+  myExpertNumber ;Used to reference their expert
+  assesment ;What does L conclude about phi?
 
   ;************************************************************************************************************************************************
   ;Subjective values
   priorE ;used to initialize rel
   priorAlpha ;used to initialize rel
+  priorCorrectExpertAdvice ;used to initialize rel and beta
   hyp ;node in the Bayes-Net
   rel ;node in the Bayes-Net
   rep ;node in the Bayes-Net
   beta ;used to define the rep node
-  charlatan? ;is E worse than chance?
-]
+  ]
 
 globals[
   ;numberOfPairs ;How many experts and laypeople are there?
@@ -70,7 +69,6 @@ to beginSetupLaypeople
     ;L competency is a random float within the specified interval.
     set competency ((random-float (maxLaypersonCompetency - minLaypersonCompetency)) + minLaypersonCompetency)
 
-
     ;L's actual interest on the question psi is determined based on the actual truth about phi.
     ifelse phi = 1 [set psi psiGivenPhi]
     [set psi (1 - psiGivenPhi)]
@@ -78,10 +76,6 @@ to beginSetupLaypeople
     ;L's subjective prior for the hypothesis that |psi|=true is given by their competency
     ifelse psi = 1 [set hyp competency]
     [set hyp 1 - competency]
-
-
-
-
   ]
 
 end
@@ -105,7 +99,7 @@ to finishSetupLaypeople
 
     ;------------------------------------------------------------------------------------------------------
     ;L's subjective prior's in the experts reliability arise from their priors in e and alpha
-    let priorCorrectExpertAdvice priorE * priorAlpha ;use correct formula
+    set priorCorrectExpertAdvice (1 - (priorAlpha * (1 - priorE) + (1 - priorAlpha) * priorE))
 
     ifelse updateOnReliablyBadExperts [
 
@@ -116,12 +110,12 @@ to finishSetupLaypeople
       ;Here, beta is just 0.5
 
       if priorCorrectExpertAdvice < 0.5 [
-        set charlatan? true
+        print "This layperson thinks their vis-à-vis to be a charlatan."
         set priorCorrectExpertAdvice 0.5 + (0.5 - priorCorrectExpertAdvice)
       ]
 
       set rel (priorCorrectExpertAdvice - 0.5) * 2
-      set beta 0.5
+
 
 
     ][
@@ -129,14 +123,13 @@ to finishSetupLaypeople
       ;An expert with a 100 % chance of giving correct advice is reliable with a probability 1
       ;An expert with a 75 % chance of giving correct advice is reliable with a probability 0.5
       ;An expert with a sub 50 % chance of giving correct advice is unreliable
-      ;Here, beta is calculated by [...]
 
-
-
-      if priorCorrectExpertAdvice < 0.5 [set priorCorrectExpertAdvice 0.5]
+      if priorCorrectExpertAdvice < 0.5 [
+        set priorCorrectExpertAdvice 0.5
+        print "This layperson thinks their vis-à-vis to be a charlatan."]
       set rel (priorCorrectExpertAdvice - 0.5) * 2
 
-      set beta 0.5
+
     ]
 
 
@@ -166,8 +159,6 @@ to setupExperts
 
 
     ;alpha is a random float within the specified interval
-
-
     set interestAlignment ((random-float (maxInterestAlignment - minInterestAlignment)) + minInterestAlignment)
 
 
@@ -253,12 +244,18 @@ to go ;called once per tick
     ifelse i < competency [set assesment phi][set assesment 1 - phi]
     ifelse assesment = phi [set shape "face happy"][set shape "x"] ;laypeople that figured out phi get a smiley, others a X
 
+     ifelse updateOnReliablyBadExperts = true [
+
+      set beta 0.5
+
+
+    ][
+      ;Here, beta is instead given by L's exexpectation that E claims that psi
+      set beta (priorCorrectExpertAdvice * assesment + (1 - priorCorrectExpertAdvice) * (1 - assesment))
+    ]
+
     ;************************************************************************************************************************************************
-    ;Determine whether the layperson does defer using Hartmann's & Boven's model
     let rep? [testimony] of turtle myExpertNumber
-
-    ; ifelse didDefer = [psi] of turtle mylaypersonnumber [set color green][ set color red]
-
     ;************************************************************************************************************************************************
     ;Update hyp
     let previousHyp hyp
@@ -285,13 +282,16 @@ to go ;called once per tick
 
     ifelse previousRel < rel [
       print (word "Layperson #" who " increased their estimate of their expert's reliability.")
+      set color green ;Increasing REL is taken as evidence of trusting E
     ][
       print (word "Layperson #" who " did NOT increase their estimate of their expert's reliability.")
+      set color red ;Decreasing REL is taken as evidence of distrusting E
     ]
+
+
 
   ]
 end
-
 
 
 
