@@ -30,6 +30,7 @@ laypeople-own[
   rel ;node in the Bayes-Net
   rep ;node in the Bayes-Net
   beta ;used to define the rep node
+  charlatan? ;Does L flip their expert's report?
   ]
 
 globals[
@@ -52,7 +53,11 @@ to setup ;called at the start of each simulation
 
 to setupWorld
   set phi random 2
-   resize-world (0 -(numberOfPairs / 2)) (numberOfPairs / 2) (0 -(numberOfPairs / 2)) (numberOfPairs / 2)
+  ifelse numberOfPairs mod 2 = 0[
+    resize-world (0 -(numberOfPairs / 2)) ((numberOfPairs / 2) - 1) (0 -(numberOfPairs / 2)) ((numberOfPairs / 2) - 1)
+  ][
+    resize-world (0 -(numberOfPairs + 1)/ 2) (((numberOfPairs + 1) / 2) - 1) (0 -(numberOfPairs + 1) / 2) (((numberOfPairs + 1) / 2) - 1)
+  ]
 end
 
 to beginSetupLaypeople
@@ -60,7 +65,7 @@ to beginSetupLaypeople
     set color white
     ;Each layperson should stand opposite their respective expert.
     set xcor 0 - numberOfPairs / 4
-    set ycor who
+    set ycor 0 - numberOfPairs / 2 + who
 
     set myExpertNumber who + numberOfPairs
 
@@ -110,6 +115,7 @@ to finishSetupLaypeople
       ;Here, beta is just 0.5
 
       if priorCorrectExpertAdvice < 0.5 [
+        set charlatan? true
         print "This layperson thinks their vis-à-vis to be a charlatan."
         set priorCorrectExpertAdvice 0.5 + (0.5 - priorCorrectExpertAdvice)
       ]
@@ -125,6 +131,7 @@ to finishSetupLaypeople
       ;An expert with a sub 50 % chance of giving correct advice is unreliable
 
       if priorCorrectExpertAdvice < 0.5 [
+        set charlatan? true
         set priorCorrectExpertAdvice 0.5
         print "This layperson thinks their vis-à-vis to be a charlatan."]
       set rel (priorCorrectExpertAdvice - 0.5) * 2
@@ -144,7 +151,7 @@ to setupExperts
 
     ;Each expert should stand opposite their respective layperson.
     set xcor numberOfPairs / 4
-    set ycor who - numberOfPairs
+    set ycor 0 - numberOfPairs / 2 + (who - numberOfPairs)
 
     ;1:1 linking of exerts and laypeople
     set myLaypersonNumber who - numberOfPairs
@@ -256,6 +263,7 @@ to go ;called once per tick
 
     ;************************************************************************************************************************************************
     let rep? [testimony] of turtle myExpertNumber
+    if charlatan? = true [set rep? 1 - rep?] ;Reliably bad expert testimony is computed invertedly, as higher order evidence
     ;************************************************************************************************************************************************
     ;Update hyp
     let previousHyp hyp
@@ -350,10 +358,10 @@ end
 
 @#$#@#$#@
 GRAPHICS-WINDOW
-296
-14
-552
-271
+710
+72
+1211
+574
 -1
 -1
 49.6
@@ -366,10 +374,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--2
-2
--2
-2
+-5
+4
+-5
+4
 0
 0
 1
@@ -419,7 +427,7 @@ numberOfPairs
 numberOfPairs
 1
 10
-5.0
+10.0
 1
 1
 NIL
@@ -434,7 +442,7 @@ minLaypersonCompetency
 minLaypersonCompetency
 0
 1
-0.5
+0.51
 0.01
 1
 NIL
@@ -449,7 +457,7 @@ maxLaypersonCompetency
 maxLaypersonCompetency
 0
 1
-0.6
+1.0
 0.01
 1
 NIL
@@ -464,7 +472,7 @@ minExpertCompetency
 minExpertCompetency
 0
 1
-0.75
+0.5
 0.01
 1
 NIL
@@ -505,7 +513,7 @@ laypersonAstuteness
 laypersonAstuteness
 0
 1
-0.79
+1.0
 0.01
 1
 NIL
@@ -531,7 +539,7 @@ minInterestAlignment
 minInterestAlignment
 0
 1
-1.0
+0.0
 0.01
 1
 NIL
@@ -560,6 +568,16 @@ CHOOSER
 WhatDoesTrustMean?
 WhatDoesTrustMean?
 "Increase of REL" "Adjustment of HYP according to testimony"
+0
+
+TEXTBOX
+811
+40
+1091
+70
+Laypeople --------------------- Experts
+12
+0.0
 1
 
 @#$#@#$#@
