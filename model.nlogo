@@ -21,8 +21,8 @@ laypeople-own[
   psi ;Boolean normative question that the layperson has an interest in
   myExpertNumber ;Used to reference their expert
   assesment ;What does L conclude about phi?
-  trustCondition1 ;
-  trustCondition2
+  trustCondition1 ;proper value and adjustment of HYP
+  trustCondition2 ;increase of REL
   didTrust? ;did this L end up trusting their E?
 
   ;************************************************************************************************************************************************
@@ -56,6 +56,16 @@ to setup ;called at the start of each simulation
 
   printSetup
  end
+
+
+to go ;called once per tick
+  tick
+
+  goExperts
+  goLaypeople
+
+  print (word "So far this run, in " modelMatchCounter " out of " (ticks * numberOfPairs) " interactions the objective prediction matched the subjective decision.")
+end
 
 to setupWorld
   set phi random 2
@@ -201,57 +211,9 @@ to printSetup
 
 end
 
-to go ;called once per tick
-  tick
 
-  ask experts[
-    ;************************************************************************************************************************************************
-    ;determine E's assesment of phi
-    let i random-float 1
-    ifelse i < competency [set assesment phi][set assesment 1 - phi]
-    print (word "Expert " (who - numberOfPairs) " assessed the value of phi to be " assesment ".")
-
-    ;************************************************************************************************************************************************
-    ;determine E's assesment of psi
-    ifelse assesment = phi [
-      let j random-float 1
-      ifelse j < interestalignment [
-        set testimony [psi] of turtle mylaypersonnumber
-
-      ][set testimony 1 - [psi] of turtle mylaypersonnumber]
-
-    ][
-      let j random-float 1
-      ifelse j > interestalignment [
-        set testimony [psi] of turtle mylaypersonnumber
-      ][
-        set testimony 1 - [psi] of turtle mylaypersonnumber
-      ]
-    ]
-
-    print (word "Their testimony is " testimony ", while it would lay in their layperson's interest to " [psi] of turtle mylaypersonnumber ".")
-    ifelse assesment = phi [set shape "face happy"][set shape "x"] ;experts that figured out phi get a smiley, others a X
-    ifelse testimony = [psi] of turtle mylaypersonnumber [set color green][ set color red] ;experts that gave correct testimony are green, others red
-
-    ;************************************************************************************************************************************************
-    ;determine whether deferral is optimal according to Duijf's model and color the links accordingly
-    let chanceOfCorrectTestimony (interestAlignment * competency + (1 - interestAlignment) * (1 - competency))
-
-    ifelse  ([competency] of turtle mylaypersonnumber) < chanceOfCorrectTestimony [
-      print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should trust this expert.")
-      ask my-links [set color green]
-      set objectiveTrustworthiness true
-    ][
-      print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should NOT trust this expert.")
-      ask my-links [set color red]
-      set objectiveTrustworthiness false
-    ]
-    print "--------------------------------------------------------------------------------------------------------------"
-
-  ]
-
-
-  ask laypeople [
+to goLaypeople
+   ask laypeople [
     ;************************************************************************************************************************************************
     ;determine L's assesment of phi (and thereby of psi)
     let i random-float 1
@@ -380,13 +342,56 @@ to go ;called once per tick
 
 
 ]
-  print (word "So far this run, in " modelMatchCounter " out of " (ticks * numberOfPairs) " interactions the objective prediction matched the subjective decision.")
 end
 
+to goExperts
 
+  ask experts[
+    ;************************************************************************************************************************************************
+    ;determine E's assesment of phi
+    let i random-float 1
+    ifelse i < competency [set assesment phi][set assesment 1 - phi]
+    print (word "Expert " (who - numberOfPairs) " assessed the value of phi to be " assesment ".")
 
+    ;************************************************************************************************************************************************
+    ;determine E's assesment of psi
+    ifelse assesment = phi [
+      let j random-float 1
+      ifelse j < interestalignment [
+        set testimony [psi] of turtle mylaypersonnumber
 
+      ][set testimony 1 - [psi] of turtle mylaypersonnumber]
 
+    ][
+      let j random-float 1
+      ifelse j > interestalignment [
+        set testimony [psi] of turtle mylaypersonnumber
+      ][
+        set testimony 1 - [psi] of turtle mylaypersonnumber
+      ]
+    ]
+
+    print (word "Their testimony is " testimony ", while it would lay in their layperson's interest to " [psi] of turtle mylaypersonnumber ".")
+    ifelse assesment = phi [set shape "face happy"][set shape "x"] ;experts that figured out phi get a smiley, others a X
+    ifelse testimony = [psi] of turtle mylaypersonnumber [set color green][ set color red] ;experts that gave correct testimony are green, others red
+
+    ;************************************************************************************************************************************************
+    ;determine whether deferral is optimal according to Duijf's model and color the links accordingly
+    let chanceOfCorrectTestimony (interestAlignment * competency + (1 - interestAlignment) * (1 - competency))
+
+    ifelse  ([competency] of turtle mylaypersonnumber) < chanceOfCorrectTestimony [
+      print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should trust this expert.")
+      ask my-links [set color green]
+      set objectiveTrustworthiness true
+    ][
+      print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should NOT trust this expert.")
+      ask my-links [set color red]
+      set objectiveTrustworthiness false
+    ]
+    print "--------------------------------------------------------------------------------------------------------------"
+
+  ]
+end
 
 
 
