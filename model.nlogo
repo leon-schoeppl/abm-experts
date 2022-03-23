@@ -137,7 +137,8 @@ to finishSetupLaypeople
       if priorCorrectExpertAdvice < 0.5 [
         set charlatan? true
         set priorCorrectExpertAdvice 0.5
-        print "This layperson thinks their vis-à-vis to be a charlatan."]
+        print "This layperson thinks their vis-à-vis to be a charlatan."
+      ]
       set rel (priorCorrectExpertAdvice - 0.5) * 2
 
 
@@ -269,7 +270,9 @@ to go ;called once per tick
 
     ;************************************************************************************************************************************************
     let rep? [testimony] of turtle myExpertNumber
-    if charlatan? = true [set rep? 1 - rep?] ;Reliably bad expert testimony is computed invertedly, as higher order evidence
+    if charlatan? = true and updateOnReliablyBadExperts = true [set rep? 1 - rep?] ;Reliably bad expert testimony is computed invertedly, as higher order evidence
+
+
     ;************************************************************************************************************************************************
     ;Update hyp
     let previousHyp hyp
@@ -282,7 +285,7 @@ to go ;called once per tick
 
 
 
-    if previousHyp <= hyp [
+    ifelse previousHyp < hyp [
 
       print (word "Layperson #" who " increased their estimate of psi.")
 
@@ -307,9 +310,7 @@ to go ;called once per tick
 
 
 
-    ]
-
-    if previousHyp >= hyp[
+    ][
       print (word "Layperson #" who " did NOT increase their estimate of psi.")
 
         ifelse rep? = 0 and hyp <= 0.5 [
@@ -340,7 +341,7 @@ to go ;called once per tick
 
 
 
-    ifelse previousRel <= rel [
+    ifelse previousRel < rel [
       print (word "Layperson #" who " increased their estimate of their expert's reliability.")
       set trustcondition2  true
 
@@ -583,7 +584,7 @@ SWITCH
 453
 updateOnReliablyBadExperts
 updateOnReliablyBadExperts
-0
+1
 1
 -1000
 
@@ -984,9 +985,11 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment" repetitions="100" runMetricsEveryStep="true">
+  <experiment name="experiment" repetitions="1000" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
+    <timeLimit steps="1"/>
+    <metric>modelMatchCounter</metric>
     <enumeratedValueSet variable="maxLaypersonCompetency">
       <value value="1"/>
     </enumeratedValueSet>
@@ -997,7 +1000,7 @@ NetLogo 6.1.1
       <value value="1"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="laypersonAstuteness">
-      <value value="1"/>
+      <value value="0.2"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="e&gt;l">
       <value value="true"/>
@@ -1006,19 +1009,19 @@ NetLogo 6.1.1
       <value value="1"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="numberOfPairs">
-      <value value="1"/>
+      <value value="10"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="minInterestAlignment">
-      <value value="0.5"/>
+      <value value="0"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="minLaypersonCompetency">
       <value value="0.5"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="WhatDoesTrustMean?">
-      <value value="&quot;Adjustment of HYP according to testimony&quot;"/>
+      <value value="&quot;both&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="updateOnReliablyBadExperts">
-      <value value="true"/>
+      <value value="false"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
