@@ -1,5 +1,5 @@
-breed[experts expert]
-breed[laypeople layperson]
+breed[experts expert] ;(E)
+breed[laypeople layperson] ;(L)
 
 ;------------------------------------------------------------------------------------------------------
 ;The properties of the expert are objective values used in Duijf's model.
@@ -9,6 +9,7 @@ experts-own[
   assesment ;what does the expert think about phi
   testimony ;What does the expert suggest the layperson do?
   myLaypersonNumber ;used to reference their layperson
+  objectiveTrustworthiness ;should this E be trusted by their L according to Duijf's model?
 
 ]
 
@@ -20,6 +21,9 @@ laypeople-own[
   psi ;Boolean normative question that the layperson has an interest in
   myExpertNumber ;Used to reference their expert
   assesment ;What does L conclude about phi?
+  trustCondition1 ;
+  trustCondition2
+  didTrust? ;did this L end up trusting their E?
 
   ;************************************************************************************************************************************************
   ;Subjective values
@@ -31,11 +35,13 @@ laypeople-own[
   rep ;node in the Bayes-Net
   beta ;used to define the rep node
   charlatan? ;Does L flip their expert's report?
+
   ]
 
 globals[
   ;numberOfPairs ;How many experts and laypeople are there?
   phi ;Boolean factual proposition
+  modelMatchCounter ;How often did didTrust? match objectiveTrustworthiness?
 ]
 
 to setup ;called at the start of each simulation
@@ -53,18 +59,15 @@ to setup ;called at the start of each simulation
 
 to setupWorld
   set phi random 2
-  ifelse numberOfPairs mod 2 = 0[
-    resize-world (0 -(numberOfPairs / 2)) ((numberOfPairs / 2) - 1) (0 -(numberOfPairs / 2)) ((numberOfPairs / 2) - 1)
-  ][
-    resize-world (0 -(numberOfPairs + 1)/ 2) (((numberOfPairs + 1) / 2) - 1) (0 -(numberOfPairs + 1) / 2) (((numberOfPairs + 1) / 2) - 1)
-  ]
+  set modelMatchCounter 0
+  resize-world -5 5 -5 5
 end
 
 to beginSetupLaypeople
   create-Laypeople numberOfPairs[
     set color white
     ;Each layperson should stand opposite their respective expert.
-    set xcor 0 - numberOfPairs / 4
+    set xcor -2
     set ycor 0 - numberOfPairs / 2 + who
 
     set myExpertNumber who + numberOfPairs
@@ -91,8 +94,9 @@ to finishSetupLaypeople
     ;------------------------------------------------------------------------------------------------------
     ;L takes an educated guess at e and alpha of their expert, based on the laypersonAstutness
 
-    let i (random-float (1 - laypersonAstuteness) * 2) - (1 - laypersonAstuteness)
-    let j (random-float (1 - laypersonAstuteness) * 2) - (1 - laypersonAstuteness)
+
+    let i (random-float (laypersonAstuteness) * 2) - (laypersonAstuteness)
+    let j (random-float (laypersonAstuteness) * 2) - (laypersonAstuteness)
 
     set priorE [competency] of turtle myExpertNumber + i
     set priorAlpha [interestAlignment] of turtle myExpertNumber + j
@@ -150,7 +154,7 @@ to setupExperts
     set color white
 
     ;Each expert should stand opposite their respective layperson.
-    set xcor numberOfPairs / 4
+    set xcor 2
     set ycor 0 - numberOfPairs / 2 + (who - numberOfPairs)
 
     ;1:1 linking of exerts and laypeople
@@ -230,14 +234,16 @@ to go ;called once per tick
 
     ;************************************************************************************************************************************************
     ;determine whether deferral is optimal according to Duijf's model and color the links accordingly
-    let chanceOfCorrectTestimony interestAlignment * competency + (1 - interestAlignment) * (1 - competency)
+    let chanceOfCorrectTestimony (interestAlignment * competency + (1 - interestAlignment) * (1 - competency))
 
-    ifelse  [competency] of turtle mylaypersonnumber < chanceOfCorrectTestimony [
+    ifelse  ([competency] of turtle mylaypersonnumber) < chanceOfCorrectTestimony [
       print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should trust this expert.")
-      ask links [set color green]
+      ask my-links [set color green]
+      set objectiveTrustworthiness true
     ][
       print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should NOT trust this expert.")
-      ask links [set color red]
+      ask my-links [set color red]
+      set objectiveTrustworthiness false
     ]
     print "--------------------------------------------------------------------------------------------------------------"
 
@@ -273,26 +279,54 @@ to go ;called once per tick
       set hyp ((1 - (rel + beta - rel * beta))* hyp) / (1 - (rel * hyp + beta - rel * beta))
     ]
 
-    ifelse previousHyp < hyp [
+
+
+
+    if previousHyp <= hyp [
 
       print (word "Layperson #" who " increased their estimate of psi.")
 
-      if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
-        ifelse rep? = 1 and hyp > 0.5 [
-        set color green
-        ][
-          set color red
+
+      ifelse rep? = 1 and hyp >= 0.5[
+
+        if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
+         set color green
+          set didTrust? true
+          if [objectiveTrustworthiness] of turtle myExpertnumber = 1[set modelMatchCounter modelMatchCounter + 1]
         ]
+        set trustcondition1 true
+
+      ][
+        if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
+          set color red
+          set didTrust? false
+          if [objectiveTrustworthiness] of turtle myExpertnumber = 0[set modelMatchCounter modelMatchCounter + 1
+        ]]
+        set trustcondition1 false
       ]
-    ][
+
+
+
+    ]
+
+    if previousHyp >= hyp[
       print (word "Layperson #" who " did NOT increase their estimate of psi.")
-      if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
-        ifelse rep? = 0 and hyp < 0.5 [
-        set color green
-        ][
-          set color red
+
+        ifelse rep? = 0 and hyp <= 0.5 [
+        set trustcondition1 true
+        if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
+          set color green
+          set didTrust? true
+
         ]
-      ]
+        ][
+        set trustcondition1 false
+        if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
+          set color red
+          set didTrust? false
+        ]
+        ]
+
     ]
 
     ;************************************************************************************************************************************************
@@ -306,24 +340,47 @@ to go ;called once per tick
 
 
 
-    ifelse previousRel < rel [
+    ifelse previousRel <= rel [
       print (word "Layperson #" who " increased their estimate of their expert's reliability.")
+      set trustcondition2  true
 
       if whatDoesTrustMean? = "Increase of REL" [
+
         set color green ;Increasing REL is taken as evidence of trusting E
+        set didTrust? true
       ]
     ][
       print (word "Layperson #" who " did NOT increase their estimate of their expert's reliability.")
+      set trustcondition2  false
       if whatDoesTrustMean? = "Increase of REL" [
-      set color red ;Decreasing REL is taken as evidence of distrusting E
+        set color red ;Decreasing REL is taken as evidence of distrusting E
+        set didTrust? false
+
       ]
     ]
 
+    if whatDoesTrustMean? = "both" [
 
+      ifelse trustcondition1 = true and trustcondition2 = true[
+        set color green
+        print "This layperson did trust their expert."
+        set didTrust? true
+          ][
+        set color red
+        print "This layperson did NOT trust their expert."
+        set didTrust? false
+      ]
+    ]
 
+    if didTrust? = [objectiveTrustworthiness] of turtle myExpertNumber [
+  set modelMatchCounter modelMatchcounter + 1
   ]
-end
 
+
+
+]
+  print (word "So far this run, in " modelMatchCounter " out of " (ticks * numberOfPairs) " interactions the objective prediction matched the subjective decision.")
+end
 
 
 
@@ -358,10 +415,10 @@ end
 
 @#$#@#$#@
 GRAPHICS-WINDOW
-710
-72
-1211
-574
+776
+70
+1329
+624
 -1
 -1
 49.6
@@ -375,9 +432,9 @@ GRAPHICS-WINDOW
 1
 1
 -5
-4
+5
 -5
-4
+5
 0
 0
 1
@@ -442,7 +499,7 @@ minLaypersonCompetency
 minLaypersonCompetency
 0
 1
-0.51
+0.5
 0.01
 1
 NIL
@@ -513,7 +570,7 @@ laypersonAstuteness
 laypersonAstuteness
 0
 1
-1.0
+0.2
 0.01
 1
 NIL
@@ -567,16 +624,16 @@ CHOOSER
 504
 WhatDoesTrustMean?
 WhatDoesTrustMean?
-"Increase of REL" "Adjustment of HYP according to testimony"
-0
+"Increase of REL" "Adjustment of HYP according to testimony" "both"
+2
 
 TEXTBOX
 811
 40
-1091
-70
-Laypeople --------------------- Experts
-12
+1309
+97
+Laypeople --------------------------------------------------- Experts
+16
 0.0
 1
 
@@ -926,6 +983,45 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="100" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <enumeratedValueSet variable="maxLaypersonCompetency">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="minExpertCompetency">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="maxExpertCompetency">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="laypersonAstuteness">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="e&gt;l">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="maxInterestAlignment">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="numberOfPairs">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="minInterestAlignment">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="minLaypersonCompetency">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="WhatDoesTrustMean?">
+      <value value="&quot;Adjustment of HYP according to testimony&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="updateOnReliablyBadExperts">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
