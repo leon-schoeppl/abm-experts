@@ -34,7 +34,7 @@ laypeople-own[
   rel ;node in the Bayes-Net
   rep ;node in the Bayes-Net
   beta ;used to define the rep node
-  charlatan? ;Does L flip their expert's report?
+  charlatan? ;Does L flip their expert's report in case of updating on bad experts?
 
   ]
 
@@ -78,7 +78,7 @@ to beginSetupLaypeople
     set color white
     ;Each layperson should stand opposite their respective expert.
     set xcor -2
-    set ycor 0 - numberOfPairs / 2 + who
+    set ycor 0.5 - numberOfPairs / 2 + who
 
     set myExpertNumber who + numberOfPairs
 
@@ -101,12 +101,11 @@ end
 to finishSetupLaypeople
 
   ask laypeople[
-    ;------------------------------------------------------------------------------------------------------
-    ;L takes an educated guess at e and alpha of their expert, based on the laypersonAstutness
+    ;************************************************************************************************************************************************
+    ;L takes an educated guess at e and alpha of their expert, based on the "laypersonAstutness" setting.
 
-
-    let i (random-float (laypersonAstuteness) * 2) - (laypersonAstuteness)
-    let j (random-float (laypersonAstuteness) * 2) - (laypersonAstuteness)
+    let i (random-float laypersonAstuteness * 2) - (laypersonAstuteness)
+    let j (random-float laypersonAstuteness * 2) - (laypersonAstuteness)
 
     set priorE [competency] of turtle myExpertNumber + i
     set priorAlpha [interestAlignment] of turtle myExpertNumber + j
@@ -116,9 +115,12 @@ to finishSetupLaypeople
     if priorAlpha < 0 [set priorAlpha 0]
     if priorAlpha > 1 [set priorAlpha 1]
 
-    ;------------------------------------------------------------------------------------------------------
-    ;L's subjective prior's in the experts reliability arise from their priors in e and alpha
+    ;************************************************************************************************************************************************
+    ;L's subjective prior's in the experts reliability arise from their priors in e and alpha.
     set priorCorrectExpertAdvice (1 - (priorAlpha * (1 - priorE) + (1 - priorAlpha) * priorE))
+
+    ;************************************************************************************************************************************************
+    ;Based on the just determined prior and the UI setting "updateOnReliablyBadExperts", REL is initialized
 
     ifelse updateOnReliablyBadExperts [
 
@@ -129,6 +131,7 @@ to finishSetupLaypeople
       ;Here, beta is just 0.5
 
       if priorCorrectExpertAdvice < 0.5 [
+        ;Experts that L thinks to be worse than chance are titled charlatans.
         set charlatan? true
         print "This layperson thinks their vis-à-vis to be a charlatan."
         set priorCorrectExpertAdvice 0.5 + (0.5 - priorCorrectExpertAdvice)
@@ -145,16 +148,14 @@ to finishSetupLaypeople
       ;An expert with a sub 50 % chance of giving correct advice is unreliable
 
       if priorCorrectExpertAdvice < 0.5 [
+        ;Experts that L thinks to be worse than chance are titled charlatans.
         set charlatan? true
         set priorCorrectExpertAdvice 0.5
         print "This layperson thinks their vis-à-vis to be a charlatan."
       ]
+
       set rel (priorCorrectExpertAdvice - 0.5) * 2
-
-
     ]
-
-
   ]
 
 end
@@ -166,27 +167,19 @@ to setupExperts
 
     ;Each expert should stand opposite their respective layperson.
     set xcor 2
-    set ycor 0 - numberOfPairs / 2 + (who - numberOfPairs)
+    set ycor 0.5 - numberOfPairs / 2 + (who - numberOfPairs)
 
     ;1:1 linking of exerts and laypeople
     set myLaypersonNumber who - numberOfPairs
     create-link-with turtle myLaypersonNumber
-
 
     ;E competency is a random float within the specified interval.
     let myMinCompetency minExpertCompetency
     if e>l [set myMinCompetency max (list minExpertCompetency [competency] of turtle myLaypersonNumber)]
     set competency ((random-float (maxExpertCompetency - myMinCompetency)) + myMinCompetency)
 
-
-
     ;alpha is a random float within the specified interval
     set interestAlignment ((random-float (maxInterestAlignment - minInterestAlignment)) + minInterestAlignment)
-
-
-
-
-
   ]
 
 end
@@ -208,36 +201,34 @@ to printSetup
     set i i + 1
   ]
 
-
 end
 
 
 to goLaypeople
    ask laypeople [
     ;************************************************************************************************************************************************
-    ;determine L's assesment of phi (and thereby of psi)
+    ;determine L's assesment of phi (and thereby of psi) based on l.
     let i random-float 1
     ifelse i < competency [set assesment phi][set assesment 1 - phi]
     ifelse assesment = phi [set shape "face happy"][set shape "x"] ;laypeople that figured out phi get a smiley, others a X
 
      ifelse updateOnReliablyBadExperts = true [
-
       set beta 0.5
-
-
     ][
-      ;Here, beta is instead given by L's exexpectation that E claims that psi
+      ;Here, beta is instead given by L's subjective expectation that E claims that psi.
       set beta (priorCorrectExpertAdvice * assesment + (1 - priorCorrectExpertAdvice) * (1 - assesment))
     ]
 
     ;************************************************************************************************************************************************
     let rep? [testimony] of turtle myExpertNumber
-    if charlatan? = true and updateOnReliablyBadExperts = true [set rep? 1 - rep?] ;Reliably bad expert testimony is computed invertedly, as higher order evidence
+    ;Reliably bad expert testimony is computed invertedly, as higher order evidence
+    if charlatan? = true and updateOnReliablyBadExperts = true [set rep? 1 - rep?]
 
 
     ;************************************************************************************************************************************************
-    ;Update hyp
+    ;Update HYP based on whether REP or ¬REP.
     let previousHyp hyp
+
     ifelse rep? = 1 [
       set hyp ((rel + beta - rel * beta) * hyp)/(hyp * rel + beta - rel * beta)
     ][
@@ -246,6 +237,9 @@ to goLaypeople
 
 
 
+    ;************************************************************************************************************************************************
+    ;Determine the first condition for trust (proper updating and belief in HYP).
+
 
     ifelse previousHyp < hyp [
 
@@ -253,47 +247,45 @@ to goLaypeople
 
 
       ifelse rep? = 1 and hyp >= 0.5[
-
+       ;If HYP increased, is above 0.5 and E gave REP, the condition is met.
         if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
-         set color green
+          set color green
           set didTrust? true
-          if [objectiveTrustworthiness] of turtle myExpertnumber = 1[set modelMatchCounter modelMatchCounter + 1]
         ]
         set trustcondition1 true
-
       ][
+        ;If HYP increased, but is below 0.5 or E gave ¬REP, the condition is NOT met.
         if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
           set color red
           set didTrust? false
-          if [objectiveTrustworthiness] of turtle myExpertnumber = 0[set modelMatchCounter modelMatchCounter + 1
-        ]]
-        set trustcondition1 false
+
+        ]
+        set trustCondition1 false
       ]
-
-
-
     ][
       print (word "Layperson #" who " did NOT increase their estimate of psi.")
 
-        ifelse rep? = 0 and hyp <= 0.5 [
+      ifelse rep? = 0 and hyp <= 0.5 [
+        ;If HYP decreased, is below 0.5 and E gave ¬REP, the condition is met.
         set trustcondition1 true
         if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
           set color green
           set didTrust? true
 
         ]
-        ][
+      ][
+        ;If HYP decreased, but is above 0.5 or E gave REP, the condition is NOT met.
         set trustcondition1 false
         if whatDoesTrustMean? = "Adjustment of HYP according to testimony" [
           set color red
           set didTrust? false
         ]
-        ]
-
+      ]
     ]
 
     ;************************************************************************************************************************************************
-    ;Update rel
+    ;Update REL based on REP or ¬REP.
+
     let previousRel rel
     ifelse rep? = 1[
       set rel (hyp * rel)/(hyp * rel + beta - rel * beta)
@@ -301,15 +293,15 @@ to goLaypeople
       set rel ((1 - hyp) * rel)/(1 - (hyp * rel + beta - rel * beta))
     ]
 
-
+    ;************************************************************************************************************************************************
+    ;Determine the second condition for trust (increase of REL).
 
     ifelse previousRel < rel [
       print (word "Layperson #" who " increased their estimate of their expert's reliability.")
       set trustcondition2  true
 
       if whatDoesTrustMean? = "Increase of REL" [
-
-        set color green ;Increasing REL is taken as evidence of trusting E
+        set color green
         set didTrust? true
       ]
     ][
@@ -318,9 +310,11 @@ to goLaypeople
       if whatDoesTrustMean? = "Increase of REL" [
         set color red ;Decreasing REL is taken as evidence of distrusting E
         set didTrust? false
-
       ]
     ]
+
+    ;************************************************************************************************************************************************
+    ;Determine trust based on the two conditions.
 
     if whatDoesTrustMean? = "both" [
 
@@ -328,33 +322,33 @@ to goLaypeople
         set color green
         print "This layperson did trust their expert."
         set didTrust? true
-          ][
+      ][
         set color red
         print "This layperson did NOT trust their expert."
         set didTrust? false
       ]
     ]
 
+    ;************************************************************************************************************************************************
+    ;If L trusted (or distrusted) in accordance to the objective trustworthiness of E, count that as a model match.
+
     if didTrust? = [objectiveTrustworthiness] of turtle myExpertNumber [
-  set modelMatchCounter modelMatchcounter + 1
+      set modelMatchCounter modelMatchcounter + 1
+    ]
   ]
-
-
-
-]
 end
 
 to goExperts
 
   ask experts[
     ;************************************************************************************************************************************************
-    ;determine E's assesment of phi
+    ;determine E's assesment of phi based on e.
     let i random-float 1
     ifelse i < competency [set assesment phi][set assesment 1 - phi]
     print (word "Expert " (who - numberOfPairs) " assessed the value of phi to be " assesment ".")
 
     ;************************************************************************************************************************************************
-    ;determine E's assesment of psi
+    ;determine E's assesment of psi based on their assesment of phi and their alpha.
     ifelse assesment = phi [
       let j random-float 1
       ifelse j < interestalignment [
@@ -418,13 +412,12 @@ end
 
 
 
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-776
-70
-1329
-624
+384
+45
+937
+599
 -1
 -1
 49.6
@@ -465,9 +458,9 @@ NIL
 1
 
 BUTTON
-21
+25
 12
-94
+98
 45
 NIL
 setup
@@ -482,10 +475,10 @@ NIL
 1
 
 SLIDER
-20
-135
-192
-168
+21
+95
+193
+128
 numberOfPairs
 numberOfPairs
 1
@@ -497,10 +490,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-7
-195
-259
-228
+22
+141
+274
+174
 minLaypersonCompetency
 minLaypersonCompetency
 0
@@ -512,10 +505,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-8
-231
-260
-264
+23
+177
+275
+210
 maxLaypersonCompetency
 maxLaypersonCompetency
 0
@@ -527,10 +520,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-7
-270
-228
-303
+22
+216
+243
+249
 minExpertCompetency
 minExpertCompetency
 0
@@ -542,10 +535,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-7
-307
-232
-340
+22
+253
+247
+286
 maxExpertCompetency
 maxExpertCompetency
 0
@@ -557,10 +550,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-9
-346
-112
-379
+24
+292
+127
+325
 e>l
 e>l
 0
@@ -568,10 +561,10 @@ e>l
 -1000
 
 SLIDER
-8
-383
-217
-416
+23
+329
+232
+362
 laypersonAstuteness
 laypersonAstuteness
 0
@@ -583,10 +576,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-7
-420
-271
-453
+22
+366
+286
+399
 updateOnReliablyBadExperts
 updateOnReliablyBadExperts
 1
@@ -594,10 +587,10 @@ updateOnReliablyBadExperts
 -1000
 
 SLIDER
-463
-375
-678
-408
+20
+455
+235
+488
 minInterestAlignment
 minInterestAlignment
 0
@@ -609,10 +602,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-463
-413
-681
-446
+20
+493
+238
+526
 maxInterestAlignment
 maxInterestAlignment
 0
@@ -624,20 +617,20 @@ NIL
 HORIZONTAL
 
 CHOOSER
-6
-459
-357
-504
+21
+405
+372
+450
 WhatDoesTrustMean?
 WhatDoesTrustMean?
 "Increase of REL" "Adjustment of HYP according to testimony" "both"
 2
 
 TEXTBOX
-811
-40
-1309
-97
+419
+15
+917
+72
 Laypeople --------------------------------------------------- Experts
 16
 0.0
