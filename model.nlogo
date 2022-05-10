@@ -75,7 +75,7 @@ to setupWorld
   set phi random 2
   set modelMatchCounter 0
   set modelMatchCounterTotal 0
-  resize-world -5 5 -5 5
+  resize-world -5 5 -15 15
 end
 
 to beginSetupLaypeople
@@ -161,6 +161,11 @@ to finishSetupLaypeople
 
       set rel (priorCorrectExpertAdvice - 0.5) * 2
     ]
+
+    ;Failsave:
+    if rel = 0 [set rel 0.000001]
+    if rel = 1[set rel 0.999999]
+
   ]
 
 end
@@ -419,13 +424,13 @@ end
 
 @#$#@#$#@
 GRAPHICS-WINDOW
-384
-45
-937
-599
+394
+46
+615
+656
 -1
 -1
-49.6
+19.4
 1
 10
 1
@@ -437,8 +442,8 @@ GRAPHICS-WINDOW
 1
 -5
 5
--5
-5
+-15
+15
 0
 0
 1
@@ -487,8 +492,8 @@ SLIDER
 numberOfPairs
 numberOfPairs
 1
-10
-10.0
+30
+30.0
 1
 1
 NIL
@@ -587,7 +592,7 @@ SWITCH
 399
 updateOnReliablyBadExperts
 updateOnReliablyBadExperts
-1
+0
 1
 -1000
 
@@ -600,7 +605,7 @@ minInterestAlignment
 minInterestAlignment
 0
 1
-0.5
+0.8
 0.01
 1
 NIL
@@ -629,14 +634,14 @@ CHOOSER
 WhatDoesTrustMean?
 WhatDoesTrustMean?
 "Increase of REL" "Adjustment of HYP according to testimony" "both"
-2
+1
 
 TEXTBOX
-419
-15
-917
-72
-Laypeople --------------------------------------------------- Experts
+440
+14
+640
+45
+Laypeople--- Experts
 16
 0.0
 1
@@ -659,21 +664,21 @@ NIL
 1
 
 SWITCH
-1347
-429
-1508
-462
+932
+401
+1093
+434
 toggleOutputs
 toggleOutputs
-0
+1
 1
 -1000
 
 PLOT
-1043
-48
-1430
-409
+628
+20
+1015
+381
 Rationality Benchmark Total
 ticks
 percentage
@@ -688,10 +693,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "if ticks > 1 [plot modelmatchcounterTotal / ((ticks - 1) * numberofpairs)]"
 
 PLOT
-1433
-48
-1815
-410
+1018
+20
+1400
+382
 Rationalty Benchmark Round by Round
 ticks
 percentage
