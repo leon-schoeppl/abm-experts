@@ -10,7 +10,6 @@ experts-own[
   testimony ;What does the expert suggest the layperson do?
   myLaypersonNumber ;used to reference their layperson
   objectiveTrustworthiness ;should this E be trusted by their L according to Duijf's model?
-
 ]
 
 ;------------------------------------------------------------------------------------------------------
@@ -41,7 +40,8 @@ laypeople-own[
 globals[
   ;numberOfPairs ;How many experts and laypeople are there?
   phi ;Boolean factual proposition
-  modelMatchCounter ;How often did didTrust? match objectiveTrustworthiness?
+  modelMatchCounterTotal ;How often did didTrust? match objectiveTrustworthiness?
+  modelMatchCounter
 ]
 
 to setup ;called at the start of each simulation
@@ -54,22 +54,27 @@ to setup ;called at the start of each simulation
   setupExperts
   finishSetupLaypeople
 
-  printSetup
+  if toggleOutputs = true [printSetup]
  end
 
 
 to go ;called once per tick
   tick
+  set modelMatchCounter 0
 
   goExperts
   goLaypeople
 
-  print (word "So far this run, in " modelMatchCounter " out of " (ticks * numberOfPairs) " interactions the objective prediction matched the subjective decision.")
+  if toggleOutputs = true [print (word "So far this run, in " modelMatchCounterTotal " out of " (ticks * numberOfPairs) " interactions the objective prediction matched the subjective decision.")
+  print (word "This round, it was " modelMatchCounter " out of " numberOfPairs " interactions.")
+  ]
+
 end
 
 to setupWorld
   set phi random 2
   set modelMatchCounter 0
+  set modelMatchCounterTotal 0
   resize-world -5 5 -5 5
 end
 
@@ -133,7 +138,7 @@ to finishSetupLaypeople
       if priorCorrectExpertAdvice < 0.5 [
         ;Experts that L thinks to be worse than chance are titled charlatans.
         set charlatan? true
-        print "This layperson thinks their vis-à-vis to be a charlatan."
+        if toggleOutputs = true [print "This layperson thinks their vis-à-vis to be a charlatan."]
         set priorCorrectExpertAdvice 0.5 + (0.5 - priorCorrectExpertAdvice)
       ]
 
@@ -151,7 +156,7 @@ to finishSetupLaypeople
         ;Experts that L thinks to be worse than chance are titled charlatans.
         set charlatan? true
         set priorCorrectExpertAdvice 0.5
-        print "This layperson thinks their vis-à-vis to be a charlatan."
+        if toggleOutputs = true [ print "This layperson thinks their vis-à-vis to be a charlatan."]
       ]
 
       set rel (priorCorrectExpertAdvice - 0.5) * 2
@@ -207,7 +212,7 @@ end
 to goLaypeople
    ask laypeople [
     ;************************************************************************************************************************************************
-    ;determine L's assesment of phi (and thereby of psi) based on l.
+    ;determine L's assesment of phi (and thereby of psi) based on l. WHY DO WE NEED THIS AT ALL?
     let i random-float 1
     ifelse i < competency [set assesment phi][set assesment 1 - phi]
     ifelse assesment = phi [set shape "face happy"][set shape "x"] ;laypeople that figured out phi get a smiley, others a X
@@ -215,8 +220,10 @@ to goLaypeople
      ifelse updateOnReliablyBadExperts = true [
       set beta 0.5
     ][
-      ;Here, beta is instead given by L's subjective expectation that E claims that psi.
+      ;Here, beta is instead given by L's subjective expectation that E claims that psi. MAYBE INSTEAD PLUG IN THE HYP HERE?
       set beta (priorCorrectExpertAdvice * assesment + (1 - priorCorrectExpertAdvice) * (1 - assesment))
+
+      ;set beta 1
     ]
 
     ;************************************************************************************************************************************************
@@ -243,7 +250,7 @@ to goLaypeople
 
     ifelse previousHyp < hyp [
 
-      print (word "Layperson #" who " increased their estimate of psi.")
+      if toggleOutputs = true [print (word "Layperson #" who " increased their estimate of psi.")]
 
 
       ifelse rep? = 1 and hyp >= 0.5[
@@ -263,7 +270,7 @@ to goLaypeople
         set trustCondition1 false
       ]
     ][
-      print (word "Layperson #" who " did NOT increase their estimate of psi.")
+      if toggleOutputs = true [print (word "Layperson #" who " did NOT increase their estimate of psi.")]
 
       ifelse rep? = 0 and hyp <= 0.5 [
         ;If HYP decreased, is below 0.5 and E gave ¬REP, the condition is met.
@@ -297,7 +304,7 @@ to goLaypeople
     ;Determine the second condition for trust (increase of REL).
 
     ifelse previousRel < rel [
-      print (word "Layperson #" who " increased their estimate of their expert's reliability.")
+      if toggleOutputs = true [print (word "Layperson #" who " increased their estimate of their expert's reliability.")]
       set trustcondition2  true
 
       if whatDoesTrustMean? = "Increase of REL" [
@@ -305,7 +312,7 @@ to goLaypeople
         set didTrust? true
       ]
     ][
-      print (word "Layperson #" who " did NOT increase their estimate of their expert's reliability.")
+      if toggleOutputs = true [print (word "Layperson #" who " did NOT increase their estimate of their expert's reliability.")]
       set trustcondition2  false
       if whatDoesTrustMean? = "Increase of REL" [
         set color red ;Decreasing REL is taken as evidence of distrusting E
@@ -320,11 +327,11 @@ to goLaypeople
 
       ifelse trustcondition1 = true and trustcondition2 = true[
         set color green
-        print "This layperson did trust their expert."
+        if toggleOutputs = true [print "This layperson did trust their expert."]
         set didTrust? true
       ][
         set color red
-        print "This layperson did NOT trust their expert."
+        if toggleOutputs = true [print "This layperson did NOT trust their expert."]
         set didTrust? false
       ]
     ]
@@ -334,6 +341,7 @@ to goLaypeople
 
     if didTrust? = [objectiveTrustworthiness] of turtle myExpertNumber [
       set modelMatchCounter modelMatchcounter + 1
+      set modelMatchCounterTotal modelMatchcounterTotal + 1
     ]
   ]
 end
@@ -345,7 +353,7 @@ to goExperts
     ;determine E's assesment of phi based on e.
     let i random-float 1
     ifelse i < competency [set assesment phi][set assesment 1 - phi]
-    print (word "Expert " (who - numberOfPairs) " assessed the value of phi to be " assesment ".")
+    if toggleOutputs = true [print (word "Expert " (who - numberOfPairs) " assessed the value of phi to be " assesment ".")]
 
     ;************************************************************************************************************************************************
     ;determine E's assesment of psi based on their assesment of phi and their alpha.
@@ -365,7 +373,7 @@ to goExperts
       ]
     ]
 
-    print (word "Their testimony is " testimony ", while it would lay in their layperson's interest to " [psi] of turtle mylaypersonnumber ".")
+    if toggleOutputs = true [print (word "Their testimony is " testimony ", while it would lay in their layperson's interest to " [psi] of turtle mylaypersonnumber ".")]
     ifelse assesment = phi [set shape "face happy"][set shape "x"] ;experts that figured out phi get a smiley, others a X
     ifelse testimony = [psi] of turtle mylaypersonnumber [set color green][ set color red] ;experts that gave correct testimony are green, others red
 
@@ -374,19 +382,18 @@ to goExperts
     let chanceOfCorrectTestimony (interestAlignment * competency + (1 - interestAlignment) * (1 - competency))
 
     ifelse  ([competency] of turtle mylaypersonnumber) < chanceOfCorrectTestimony [
-      print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should trust this expert.")
+      if toggleOutputs = true [print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should trust this expert.")]
       ask my-links [set color green]
       set objectiveTrustworthiness true
     ][
-      print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should NOT trust this expert.")
+      if toggleOutputs = true [print (word "According to Duijf's model, the layperson #" (who - numberofpairs) " should NOT trust this expert.")]
       ask my-links [set color red]
       set objectiveTrustworthiness false
     ]
-    print "--------------------------------------------------------------------------------------------------------------"
+    if toggleOutputs = true [print "--------------------------------------------------------------------------------------------------------------"]
 
   ]
 end
-
 
 
 
@@ -511,7 +518,7 @@ maxLaypersonCompetency
 maxLaypersonCompetency
 0
 1
-1.0
+0.7
 0.01
 1
 NIL
@@ -526,7 +533,7 @@ minExpertCompetency
 minExpertCompetency
 0
 1
-0.5
+0.7
 0.01
 1
 NIL
@@ -541,7 +548,7 @@ maxExpertCompetency
 maxExpertCompetency
 0
 1
-1.0
+0.9
 0.01
 1
 NIL
@@ -593,7 +600,7 @@ minInterestAlignment
 minInterestAlignment
 0
 1
-0.0
+0.5
 0.01
 1
 NIL
@@ -633,6 +640,70 @@ Laypeople --------------------------------------------------- Experts
 16
 0.0
 1
+
+BUTTON
+138
+27
+201
+60
+NIL
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SWITCH
+1347
+429
+1508
+462
+toggleOutputs
+toggleOutputs
+0
+1
+-1000
+
+PLOT
+1043
+48
+1430
+409
+Rationality Benchmark Total
+ticks
+percentage
+0.0
+0.0
+0.0
+1.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "if ticks > 1 [plot modelmatchcounterTotal / ((ticks - 1) * numberofpairs)]"
+
+PLOT
+1433
+48
+1815
+410
+Rationalty Benchmark Round by Round
+ticks
+percentage
+0.0
+0.0
+0.0
+1.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "if ticks > 1 [plot modelMatchCounter / numberOfPairs]"
 
 @#$#@#$#@
 ## WHAT IS IT?
